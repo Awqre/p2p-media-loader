@@ -11,6 +11,7 @@ import {
 } from "./request";
 import * as QueueUtils from "./utils/queue-utils";
 import * as LoggerUtils from "./utils/logger";
+import * as Utils from "./utils/utils";
 import { FetchError } from "./errors";
 import { P2PLoadersContainer } from "./p2p-loaders-container";
 import debug from "debug";
@@ -69,7 +70,10 @@ export class HybridLoader {
   }
 
   private setIntervalLoading() {
-    const randomTimeout = (Math.random() * 2 + 1) * 1000;
+    const halfSegment = this.segmentAvgDuration / 2;
+    const randomTimeout = Math.round(
+      (Math.random() * halfSegment + halfSegment) * 1000
+    );
     this.randomHttpDownloadInterval = window.setTimeout(() => {
       this.loadRandomThroughHttp();
       this.setIntervalLoading();
@@ -107,7 +111,7 @@ export class HybridLoader {
     if (
       !force &&
       this.lastQueueProcessingTimeStamp !== undefined &&
-      now - this.lastQueueProcessingTimeStamp <= 950
+      now - this.lastQueueProcessingTimeStamp <= 1000
     ) {
       return;
     }
@@ -257,7 +261,7 @@ export class HybridLoader {
     const shouldLoad = Math.random() < probability;
 
     if (!shouldLoad) return;
-    const item = queue[Math.floor(Math.random() * queue.length)];
+    const item = Utils.getRandomItem(queue);
     void this.loadThroughHttp(item, true);
 
     this.logger.loader(

@@ -9,7 +9,6 @@ import * as LoggerUtils from "./utils/logger";
 import { PeerSegmentStatus } from "./enums";
 import { RequestContainer } from "./request";
 import debug from "debug";
-import { windows } from "rimraf";
 
 export class P2PLoader {
   private readonly streamExternalId: string;
@@ -58,7 +57,6 @@ export class P2PLoader {
     // eslint-disable-next-line @typescript-eslint/no-empty-function
     trackerClient.on("update", (data) => {});
     trackerClient.on("peer", (peerConnection) => {
-      console.log(peerConnection);
       const peer = this.peers.get(peerConnection.id);
       if (peer) peer.setConnection(peerConnection);
       else this.createPeer(peerConnection);
@@ -113,7 +111,7 @@ export class P2PLoader {
     }
 
     const peer = untestedPeers.length
-      ? getRandomItem(untestedPeers)
+      ? Utils.getRandomItem(untestedPeers)
       : fastestPeer;
 
     if (!peer) return;
@@ -198,7 +196,6 @@ export class P2PLoader {
   }
 
   private broadcastSegmentAnnouncement() {
-    console.log("BROADCAST ANNOUNCEMENT");
     for (const peer of this.peers.values()) {
       if (!peer.isConnected) continue;
       peer.sendSegmentsAnnouncement(this.announcement);
@@ -260,8 +257,4 @@ function utf8ToHex(utf8String: string) {
   }
 
   return result;
-}
-
-function getRandomItem<T>(items: T[]): T {
-  return items[Math.floor(Math.random() * items.length)];
 }
