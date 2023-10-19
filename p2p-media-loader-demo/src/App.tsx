@@ -243,6 +243,11 @@ function App() {
     }
   };
 
+  const createNewPeer = () => {
+    const currentUrl = window.location.href;
+    window.open(currentUrl, "_blank");
+  };
+
   return (
     <div style={{ width: 1000, margin: "auto" }}>
       <div style={{ textAlign: "center" }}>
@@ -279,6 +284,7 @@ function App() {
             <button onClick={loadStreamWithExistingInstance}>
               Load stream with existing hls/shaka instance
             </button>
+            <button onClick={createNewPeer}>Create new peer</button>
           </div>
         </div>
         <div style={{ display: "flex", justifyContent: "center" }}>
