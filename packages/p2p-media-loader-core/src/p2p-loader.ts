@@ -10,6 +10,12 @@ import { PeerSegmentStatus } from "./enums";
 import { RequestContainer } from "./request";
 import debug from "debug";
 
+type HttpLoadIntent = {
+  weightValue: number;
+  segment: Segment;
+  consents: Map<string, boolean>;
+};
+
 export class P2PLoader {
   private readonly streamExternalId: string;
   private readonly peerId: string;
@@ -18,13 +24,15 @@ export class P2PLoader {
   private announcement: JsonSegmentAnnouncement = { i: "" };
   private readonly logger = debug("core:p2p-loader");
   private broadcastAnnouncementTaskId?: number;
+  private readonly httpLoadIntentions = new Map<string, HttpLoadIntent>();
 
   constructor(
     private streamManifestUrl: string,
     private readonly stream: StreamWithSegments,
     private readonly requests: RequestContainer,
     private readonly segmentStorage: SegmentsMemoryStorage,
-    private readonly settings: Settings
+    private readonly settings: Settings,
+    private readonly loadThroughHttp: (segment: Segment) => void
   ) {
     this.peerId = PeerUtil.generatePeerId();
     this.streamExternalId = Utils.getStreamExternalId(
@@ -82,6 +90,7 @@ export class P2PLoader {
         onPeerConnected: this.onPeerConnected.bind(this),
         onPeerClosed: this.onPeerClosed.bind(this),
         onSegmentRequested: this.onSegmentRequested.bind(this),
+        onHttpLoadIntentReceived: this.onHttpLoadIntentReceived.bind(this),
       },
       this.settings
     );
@@ -132,7 +141,7 @@ export class P2PLoader {
 
   isLoadingOrLoadedBySomeone(segment: Segment): boolean {
     for (const peer of this.peers.values()) {
-      if (peer.getSegmentStatus(segment)) return true;
+      if (peer.getSegmentStatus(segment) !== undefined) return true;
     }
     return false;
   }
@@ -173,6 +182,37 @@ export class P2PLoader {
     this.peers.delete(peer.id);
   }
 
+  private onHttpLoadIntentReceived(
+    peer: Peer,
+    segmentExternalId: string,
+    weightValue: number
+  ) {
+    const ownIntention = this.httpLoadIntentions.get(segmentExternalId);
+    if (ownIntention) {
+      if (weightValue !== -1 && ownIntention.weightValue > weightValue) {
+        peer.setThatIsLoadingSegment(segmentExternalId);
+        return;
+      }
+      ownIntention.consents.set(peer.id, true);
+
+      let isAllAgreed = true;
+      for (const consent of ownIntention.consents.values()) {
+        if (!consent) {
+          isAllAgreed = false;
+          break;
+        }
+      }
+
+      if (isAllAgreed) {
+        this.loadThroughHttp(ownIntention.segment);
+        this.httpLoadIntentions.delete(segmentExternalId);
+      }
+    } else if (weightValue !== -1) {
+      peer.setThatIsLoadingSegment(segmentExternalId);
+      peer.sendHttpLoadIntent(segmentExternalId, -1);
+    }
+  }
+
   private updateAndBroadcastAnnouncement = () => {
     if (this.broadcastAnnouncementTaskId) return;
 
@@ -199,6 +239,17 @@ export class P2PLoader {
     for (const peer of this.peers.values()) {
       if (!peer.isConnected) continue;
       peer.sendSegmentsAnnouncement(this.announcement);
+    }
+  }
+
+  broadcastHttpLoadingIntent(segment: Segment, weightValue: number) {
+    const { externalId } = segment;
+    const consents = new Map<string, boolean>();
+    this.httpLoadIntentions.set(externalId, { weightValue, segment, consents });
+    for (const peer of this.peers.values()) {
+      if (!peer.isConnected) continue;
+      consents.set(peer.id, false);
+      peer.sendHttpLoadIntent(externalId, weightValue);
     }
   }
 

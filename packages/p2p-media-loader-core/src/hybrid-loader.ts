@@ -57,7 +57,9 @@ export class HybridLoader {
       requestedSegment.stream,
       this.requests,
       this.segmentStorage,
-      this.settings
+      this.settings,
+      (segment: Segment) =>
+        this.loadThroughHttp({ segment, statuses: {} as any }, true)
     );
 
     const loader = debug(`core:hybrid-loader-${activeStream.type}`);
@@ -258,15 +260,20 @@ export class HybridLoader {
     if (!queue.length) return;
     const peersAmount = connectedPeersAmount + 1;
     const probability = Math.min(queue.length / peersAmount, 1);
-    const shouldLoad = Math.random() < probability;
+    const randomValue = Math.random();
+    const shouldLoad = randomValue < probability;
 
     if (!shouldLoad) return;
     const item = Utils.getRandomItem(queue);
-    void this.loadThroughHttp(item, true);
-
-    this.logger.loader(
-      `http random request: ${LoggerUtils.getQueueItemString(item)}`
+    this.p2pLoaders.activeLoader.broadcastHttpLoadingIntent(
+      item.segment,
+      randomValue
     );
+    // void this.loadThroughHttp(item, true);
+    //
+    // this.logger.loader(
+    //   `http random request: ${LoggerUtils.getQueueItemString(item)}`
+    // );
   }
 
   private onSegmentLoaded(

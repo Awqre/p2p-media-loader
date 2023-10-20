@@ -1,6 +1,6 @@
 import { P2PLoader } from "./p2p-loader";
 import debug from "debug";
-import { Settings, Stream, StreamWithSegments } from "./index";
+import { Segment, Settings, Stream, StreamWithSegments } from "./index";
 import { RequestContainer } from "./request";
 import { SegmentsMemoryStorage } from "./segments-storage";
 import * as LoggerUtils from "./utils/logger";
@@ -22,7 +22,8 @@ export class P2PLoadersContainer {
     stream: StreamWithSegments,
     private readonly requests: RequestContainer,
     private readonly segmentStorage: SegmentsMemoryStorage,
-    private readonly settings: Settings
+    private readonly settings: Settings,
+    private readonly loadThroughHttp: (segment: Segment) => void
   ) {
     this.changeActiveLoader(stream);
   }
@@ -36,7 +37,8 @@ export class P2PLoadersContainer {
       stream,
       this.requests,
       this.segmentStorage,
-      this.settings
+      this.settings,
+      this.loadThroughHttp
     );
     const loggerInfo = LoggerUtils.getStreamString(stream);
     this.logger(`created new loader: ${loggerInfo}`);

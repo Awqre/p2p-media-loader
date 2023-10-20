@@ -4,6 +4,7 @@ export enum PeerCommandType {
   SegmentData,
   SegmentAbsent,
   CancelSegmentRequest,
+  HttpLoadIntent,
 }
 
 export enum PeerSegmentStatus {

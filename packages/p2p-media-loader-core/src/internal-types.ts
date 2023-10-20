@@ -54,7 +54,14 @@ export type PeerSendSegmentCommand =
     s: number;
   };
 
+export type PeerHTTPLoadIntentCommand =
+  BasePeerCommand<PeerCommandType.HttpLoadIntent> & {
+    i: string;
+    v: number;
+  };
+
 export type PeerCommand =
   | PeerSegmentCommand
   | PeerSegmentAnnouncementCommand
-  | PeerSendSegmentCommand;
+  | PeerSendSegmentCommand
+  | PeerHTTPLoadIntentCommand;

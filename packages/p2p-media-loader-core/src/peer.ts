@@ -2,6 +2,7 @@ import { PeerConnection } from "bittorrent-tracker";
 import {
   JsonSegmentAnnouncement,
   PeerCommand,
+  PeerHTTPLoadIntentCommand,
   PeerSegmentAnnouncementCommand,
   PeerSegmentCommand,
   PeerSendSegmentCommand,
@@ -18,6 +19,11 @@ type PeerEventHandlers = {
   onPeerConnected: (peer: Peer) => void;
   onPeerClosed: (peer: Peer) => void;
   onSegmentRequested: (peer: Peer, segmentId: string) => void;
+  onHttpLoadIntentReceived: (
+    peer: Peer,
+    segmentId: string,
+    weightValue: number
+  ) => void;
 };
 
 type PeerRequest = {
@@ -39,6 +45,7 @@ export class Peer {
   private connection?: PeerConnection;
   private connections = new Set<PeerConnection>();
   private segments = new Map<string, PeerSegmentStatus>();
+  private readonly acceptedIntents = new Set<string>();
   private request?: PeerRequest;
   private readonly logger = debug("core:peer");
   private readonly bandwidthMeasurer = new BandwidthMeasurer();
@@ -142,6 +149,10 @@ export class Peer {
       case PeerCommandType.CancelSegmentRequest:
         this.stopUploadingSegmentData();
         break;
+
+      case PeerCommandType.HttpLoadIntent:
+        this.eventHandlers.onHttpLoadIntentReceived(this, command.i, command.v);
+        break;
     }
   }
 
@@ -171,6 +182,19 @@ export class Peer {
       a: announcement,
     };
     this.sendCommand(command);
+  }
+
+  sendHttpLoadIntent(segmentExternalId: string, weightValue: number) {
+    const command: PeerHTTPLoadIntentCommand = {
+      c: PeerCommandType.HttpLoadIntent,
+      i: segmentExternalId,
+      v: weightValue,
+    };
+    this.sendCommand(command);
+  }
+
+  setThatIsLoadingSegment(segmentExternalId: string) {
+    this.acceptedIntents.add(segmentExternalId);
   }
 
   async sendSegmentData(segmentExternalId: string, data: ArrayBuffer) {
